@@ -20,6 +20,10 @@ dependencies = [
     "numpy>=1.20",
 ]
 
+[project.urls]
+Homepage = "https://github.com/<future_repo>"
+Repository = "https://github.com/<future_repo>"
+
 [project.optional-dependencies]
 plot = [
     "matplotlib>=3.5",

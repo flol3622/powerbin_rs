@@ -16,6 +16,10 @@
 
 **A drop-in, zero-overhead Rust computational engine and Python extension implementing the modern PowerBin adaptive 2D data binning algorithm.**
 
+```bash
+uv add "git+https://github.com/<future_repo>"
+```
+
 Based on the astronomy paper:  
 > **PowerBin: Fast Adaptive Data Binning with Centroidal Power Diagrams**  
 > *Michele Cappellari (2025, MNRAS, 544, 1432)*  
@@ -113,17 +117,20 @@ Simulated galaxies with exponential Sérsic profiles ($n=1$, axial ratio $q=0.75
 ### With `uv` (Recommended)
 
 ```bash
-# Direct install into your environment:
-uv pip install .
+# Add to your project dependencies:
+uv add "git+https://github.com/<future_repo>"
 
-# Or install for local development (editable):
+# Or install directly into your active environment:
+uv pip install "git+https://github.com/<future_repo>"
+
+# Local development install:
 uv pip install -e .
 ```
 
 ### With Standard `pip`
 
 ```bash
-pip install .
+pip install "git+https://github.com/<future_repo>"
 ```
 
 ### As a Pure Rust Crate
@@ -131,7 +138,7 @@ pip install .
 Add to your `Cargo.toml`:
 ```toml
 [dependencies]
-powerbin_rs = { path = "." }
+powerbin_rs = { git = "https://github.com/<future_repo>" }
 ```
 
 ---

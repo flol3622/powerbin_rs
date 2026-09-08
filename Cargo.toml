@@ -2,6 +2,10 @@
 name = "powerbin_rs"
 version = "0.1.0"
 edition = "2024"
+description = "Fast, highly-optimised Rust implementation of the PowerBin adaptive data binning algorithm"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/<future_repo>"
 
 [lib]
 name = "powerbin_rs"
