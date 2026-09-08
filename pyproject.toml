@@ -1,0 +1,21 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "powerbin_rs"
+version = "0.1.0"
+description = "Fast, highly-optimised Rust implementation of the PowerBin adaptive data binning algorithm"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = [
+    "numpy>=1.20",
+]
+
+[tool.maturin]
+module-name = "powerbin_rs"
+features = ["python"]
