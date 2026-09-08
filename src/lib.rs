@@ -13,12 +13,15 @@ pub use geometry::{build_delaunay_adjacency, estimate_pixelsize};
 pub use regularization::{power_diagram, regularization_impl, update_bins};
 pub use stopper::EarlyStopper;
 
-/// Specification of the bin capacity measure.
+/// Function signature for evaluating custom, non-additive capacities of a bin.
+pub type CapacityFn<'a> = &'a (dyn Fn(&[usize]) -> f64 + 'a);
+
+/// Capacity specification: either additive per-pixel density or custom callback.
 pub enum CapacitySpec<'a> {
     /// Additive pixel capacities (e.g. S/N squared for Poisson noise).
     Additive(&'a [f64]),
     /// General non-additive callable function returning capacity of a subset of pixels.
-    Custom(&'a dyn Fn(&[usize]) -> f64),
+    Custom(CapacityFn<'a>),
 }
 
 /// Configuration options for the PowerBin solver.
@@ -96,10 +99,14 @@ pub fn powerbin(
     let t_start = Instant::now();
 
     // Determine pixel capacity
-    let (dens, custom_fn): (Vec<f64>, Option<&dyn Fn(&[usize]) -> f64>) = match capacity_spec {
+    let (dens, custom_fn): (Vec<f64>, Option<CapacityFn>) = match capacity_spec {
         CapacitySpec::Additive(slice) => {
             if slice.len() != npix_total {
-                return Err(format!("Capacity array length {} must match xy length {}", slice.len(), npix_total));
+                return Err(format!(
+                    "Capacity array length {} must match xy length {}",
+                    slice.len(),
+                    npix_total
+                ));
             }
             (slice.to_vec(), None)
         }
@@ -151,7 +158,8 @@ pub fn powerbin(
     let time_accretion = (t2 - t1).as_secs_f64();
 
     // Stage 2: Regularization
-    let (final_bin_num, final_xybin_norm, final_rbin_norm, bin_capacity, npix, it) = if config.regul {
+    let (final_bin_num, final_xybin_norm, final_rbin_norm, bin_capacity, npix, it) = if config.regul
+    {
         if config.verbose >= 1 {
             println!("Regularization...");
         }
@@ -167,18 +175,20 @@ pub fn powerbin(
     } else {
         let m = xybin_norm.len();
         let rbin_zero = vec![0.0; m];
-        let (updated_xybin, updated_npix, updated_cap, updated_bin_num) = update_bins(
-            &norm_xy,
-            &xybin_norm,
-            &rbin_zero,
-            &dens,
-            custom_fn,
-        );
+        let (updated_xybin, updated_npix, updated_cap, updated_bin_num) =
+            update_bins(&norm_xy, &xybin_norm, &rbin_zero, &dens, custom_fn);
         let mut rbin = Vec::with_capacity(m);
         for &cnt in &updated_npix {
             rbin.push((cnt as f64 / std::f64::consts::PI).sqrt());
         }
-        (updated_bin_num, updated_xybin, rbin, updated_cap, updated_npix, 0)
+        (
+            updated_bin_num,
+            updated_xybin,
+            rbin,
+            updated_cap,
+            updated_npix,
+            0,
+        )
     };
     let t3 = Instant::now();
     let time_regularization = (t3 - t2).as_secs_f64();
@@ -206,7 +216,11 @@ pub fn powerbin(
     let rms_frac = if non_single_caps.len() > 1 {
         let count = non_single_caps.len() as f64;
         let mean = non_single_caps.iter().sum::<f64>() / count;
-        let var = non_single_caps.iter().map(|&c| (c - mean) * (c - mean)).sum::<f64>() / (count - 1.0);
+        let var = non_single_caps
+            .iter()
+            .map(|&c| (c - mean) * (c - mean))
+            .sum::<f64>()
+            / (count - 1.0);
         var.sqrt() / mean * 100.0
     } else {
         0.0
@@ -219,7 +233,10 @@ pub fn powerbin(
         println!("Capacity Fractional RMS Scatter (%): {:.2}", rms_frac);
         println!("Time Accretion: {:.2} s", time_accretion);
         if config.regul {
-            println!("Time Regularization (it={}): {:.2} s", it, time_regularization);
+            println!(
+                "Time Regularization (it={}): {:.2} s",
+                it, time_regularization
+            );
         }
     }
 

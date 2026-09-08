@@ -1,4 +1,4 @@
-use powerbin_rs::{estimate_pixelsize, powerbin, CapacitySpec, PowerBinConfig};
+use powerbin_rs::{CapacitySpec, PowerBinConfig, estimate_pixelsize, powerbin};
 
 const SAMPLE_DATA: &str = include_str!("sample_data_ngc2273.txt");
 
@@ -28,7 +28,11 @@ fn load_ngc2273() -> (Vec<[f64; 2]>, Vec<f64>) {
 fn test_pixelsize_estimation() {
     let (xy, _) = load_ngc2273();
     let ps = estimate_pixelsize(&xy);
-    assert!((ps - 0.799908).abs() < 1e-4, "Estimated pixelsize {} should be close to 0.799908", ps);
+    assert!(
+        (ps - 0.799908).abs() < 1e-4,
+        "Estimated pixelsize {} should be close to 0.799908",
+        ps
+    );
 }
 
 #[test]
@@ -44,13 +48,21 @@ fn test_powerbin_ngc2273_additive() {
 
     let result = powerbin(&xy, CapacitySpec::Additive(&dens), &config).expect("powerbin run");
     assert_eq!(result.bin_num.len(), xy.len());
-    assert_eq!(result.xybin.len(), 378, "Should produce 378 bins on NGC 2273");
+    assert_eq!(
+        result.xybin.len(),
+        378,
+        "Should produce 378 bins on NGC 2273"
+    );
     assert_eq!(result.rbin.len(), 378);
     assert_eq!(result.bin_capacity.len(), 378);
 
     let single_count = result.single.iter().filter(|&&s| s).count();
     assert_eq!(single_count, 105, "Should have 105 single-pixel bins");
-    assert!((result.rms_frac - 13.58).abs() < 0.2, "RMS frac {} should match Python reference ~13.58%", result.rms_frac);
+    assert!(
+        (result.rms_frac - 13.58).abs() < 0.2,
+        "RMS frac {} should match Python reference ~13.58%",
+        result.rms_frac
+    );
 }
 
 #[test]
@@ -72,9 +84,7 @@ fn test_powerbin_ngc2273_accretion_only() {
 #[test]
 fn test_powerbin_custom_callable() {
     let (xy, dens) = load_ngc2273();
-    let custom_fn = |idx: &[usize]| -> f64 {
-        idx.iter().map(|&i| dens[i]).sum()
-    };
+    let custom_fn = |idx: &[usize]| -> f64 { idx.iter().map(|&i| dens[i]).sum() };
 
     let config = PowerBinConfig {
         target_capacity: 2500.0,
@@ -84,7 +94,8 @@ fn test_powerbin_custom_callable() {
         maxiter: 50,
     };
 
-    let result = powerbin(&xy, CapacitySpec::Custom(&custom_fn), &config).expect("powerbin custom callable");
+    let result =
+        powerbin(&xy, CapacitySpec::Custom(&custom_fn), &config).expect("powerbin custom callable");
     assert_eq!(result.xybin.len(), 378);
     assert!((result.rms_frac - 13.58).abs() < 0.2);
 }

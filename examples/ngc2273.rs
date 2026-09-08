@@ -1,4 +1,4 @@
-use powerbin_rs::{estimate_pixelsize, powerbin, CapacitySpec, PowerBinConfig};
+use powerbin_rs::{CapacitySpec, PowerBinConfig, estimate_pixelsize, powerbin};
 use std::time::Instant;
 
 const SAMPLE_DATA: &str = include_str!("../tests/sample_data_ngc2273.txt");
@@ -43,7 +43,8 @@ fn main() {
     };
 
     let t0 = Instant::now();
-    let res = powerbin(&xy, CapacitySpec::Additive(&dens), &config).expect("PowerBin execution failed");
+    let res =
+        powerbin(&xy, CapacitySpec::Additive(&dens), &config).expect("PowerBin execution failed");
     let dt = t0.elapsed();
 
     println!("\n=== Summary ===");

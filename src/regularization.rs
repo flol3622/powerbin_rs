@@ -4,11 +4,7 @@ use rayon::prelude::*;
 use std::num::NonZeroUsize;
 
 /// Computes the Power Diagram assignment for every pixel in `xy`.
-pub fn power_diagram(
-    xy: &[[f64; 2]],
-    xybin: &[[f64; 2]],
-    rbin: &[f64],
-) -> Vec<usize> {
+pub fn power_diagram(xy: &[[f64; 2]], xybin: &[[f64; 2]], rbin: &[f64]) -> Vec<usize> {
     let m = xybin.len();
     if m == 0 {
         return vec![0; xy.len()];
@@ -36,13 +32,26 @@ pub fn power_diagram(
         .collect()
 }
 
+use crate::CapacityFn;
+
+/// Return type of the regularization step:
+/// (bin_num, xybin, rbin, bin_capacity, npix, final_iter)
+pub type RegularizationOutput = (
+    Vec<usize>,
+    Vec<[f64; 2]>,
+    Vec<f64>,
+    Vec<f64>,
+    Vec<usize>,
+    usize,
+);
+
 /// Updates bin properties based on Power Diagram tessellation.
 pub fn update_bins(
     xy: &[[f64; 2]],
     xybin: &[[f64; 2]],
     rbin: &[f64],
     dens: &[f64],
-    custom_capacity_fn: Option<&dyn Fn(&[usize]) -> f64>,
+    custom_capacity_fn: Option<CapacityFn>,
 ) -> (Vec<[f64; 2]>, Vec<usize>, Vec<f64>, Vec<usize>) {
     let n = xy.len();
     let m = xybin.len();
@@ -53,8 +62,7 @@ pub fn update_bins(
     let mut sum_y = vec![0.0; m];
     let mut capacity = vec![0.0; m];
 
-    for i in 0..n {
-        let b = bin_num[i];
+    for (i, &b) in bin_num.iter().enumerate().take(n) {
         if b < m {
             npix[b] += 1;
             sum_x[b] += xy[i][0];
@@ -73,8 +81,7 @@ pub fn update_bins(
 
     if let Some(func) = custom_capacity_fn {
         let mut groups: Vec<Vec<usize>> = vec![Vec::new(); m];
-        for i in 0..n {
-            let b = bin_num[i];
+        for (i, &b) in bin_num.iter().enumerate().take(n) {
             if b < m {
                 groups[b].push(i);
             }
@@ -92,10 +99,10 @@ pub fn regularization_impl(
     mut xybin: Vec<[f64; 2]>,
     dens: &[f64],
     target_capacity: f64,
-    custom_capacity_fn: Option<&dyn Fn(&[usize]) -> f64>,
+    custom_capacity_fn: Option<CapacityFn>,
     verbose: usize,
     maxiter: usize,
-) -> (Vec<usize>, Vec<[f64; 2]>, Vec<f64>, Vec<f64>, Vec<usize>, usize) {
+) -> RegularizationOutput {
     let n = xy.len();
     let m = xybin.len();
     let mut rbin = vec![1.0; m];
@@ -125,11 +132,13 @@ pub fn regularization_impl(
             let z = (rmax2 - r * r).max(0.0).sqrt();
             lifted[j] = [xybin[j][0], xybin[j][1], z];
         }
-        let tree: ImmutableKdTree<f64, 3> = ImmutableKdTree::new_from_slice_parallel(&lifted).unwrap();
+        let tree: ImmutableKdTree<f64, 3> =
+            ImmutableKdTree::new_from_slice_parallel(&lifted).unwrap();
 
         if let Some(func) = custom_capacity_fn {
             // Callable capacity: we need the full pixel assignment
-            let bin_num: Vec<usize> = xy.par_iter()
+            let bin_num: Vec<usize> = xy
+                .par_iter()
                 .map(|p| {
                     tree.query(&[p[0], p[1], 0.0])
                         .nearest_one::<SquaredEuclidean<f64>>()
@@ -162,7 +171,8 @@ pub fn regularization_impl(
             }
         } else {
             // Additive capacity: parallel fold/reduce without extra memory allocation
-            let (sum_x, sum_y, counts, cap_acc) = xy.par_chunks(chunk_size)
+            let (sum_x, sum_y, counts, cap_acc) = xy
+                .par_chunks(chunk_size)
                 .enumerate()
                 .fold(
                     || (vec![0.0; m], vec![0.0; m], vec![0usize; m], vec![0.0; m]),
@@ -170,7 +180,8 @@ pub fn regularization_impl(
                         let start = chunk_idx * chunk_size;
                         for (offset, &p) in chunk.iter().enumerate() {
                             let i = start + offset;
-                            let b = tree.query(&[p[0], p[1], 0.0])
+                            let b = tree
+                                .query(&[p[0], p[1], 0.0])
                                 .nearest_one::<SquaredEuclidean<f64>>()
                                 .execute()
                                 .item as usize;
@@ -182,7 +193,7 @@ pub fn regularization_impl(
                             }
                         }
                         (sx, sy, cnt, cacc)
-                    }
+                    },
                 )
                 .reduce(
                     || (vec![0.0; m], vec![0.0; m], vec![0usize; m], vec![0.0; m]),
@@ -194,7 +205,7 @@ pub fn regularization_impl(
                             a.3[j] += b.3[j];
                         }
                         a
-                    }
+                    },
                 );
 
             npix = counts;

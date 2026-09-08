@@ -154,8 +154,8 @@ import numpy as np
 from powerbin_rs import PowerBin
 
 # 1. Prepare 2D coordinates and capacity (e.g. S/N squared)
-xy = np.loadtxt("galaxy_coordinates.txt")     # shape (N, 2)
-capacity = (signal / noise) ** 2             # shape (N,)
+xy = np.loadtxt("galaxy_coordinates.txt")  # shape (N, 2)
+capacity = (signal / noise) ** 2  # shape (N,)
 target_sn = 50.0
 
 # 2. Run adaptive binning in milliseconds
@@ -186,10 +186,11 @@ For integral-field spectroscopy with spatial covariance (e.g., CALIFA, MaNGA, MU
 def correlated_noise_capacity(indices):
     """Custom capacity formula accounting for spatial covariance penalty."""
     tot_signal = np.sum(signal[indices])
-    tot_noise = np.sqrt(np.sum(noise[indices]**2))
+    tot_noise = np.sqrt(np.sum(noise[indices] ** 2))
     sn = tot_signal / tot_noise
     sn /= 1.0 + 1.07 * np.log10(len(indices))  # Covariance penalty factor
     return sn**2
+
 
 pb = PowerBin(xy, correlated_noise_capacity, target_capacity=50.0**2)
 ```

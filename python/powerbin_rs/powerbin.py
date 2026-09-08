@@ -2,14 +2,18 @@
 PowerBin: Fast Adaptive 2D Data Binning with Centroidal Power Diagrams
 Optimized Rust Core Implementation
 """
-from time import perf_counter
-from typing import Callable, Optional, Union
+
+from __future__ import annotations
+
+from typing import Any, Callable
+
+import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import ArrayLike
-import matplotlib.pyplot as plt
 from scipy import sparse
 
-from ._core import PowerBinCore, power_diagram as _core_power_diagram
+from ._core import PowerBinCore
+from ._core import power_diagram as _core_power_diagram
 from .plotting import format_asinh_axis, plot_power_diagram
 
 
@@ -106,12 +110,12 @@ class PowerBin:
     def __init__(
         self,
         xy: ArrayLike,
-        capacity_spec: Union[Callable, ArrayLike],
+        capacity_spec: Callable | ArrayLike,
         target_capacity: float,
-        pixelsize: Optional[float] = None,
+        pixelsize: float | None = None,
         verbose: int = 1,
         regul: bool = True,
-        args: tuple = (),
+        args: Any = (),
         maxiter: int = 50,
     ) -> None:
         # --- Input Validation (100% parity with reference) ---
@@ -128,18 +132,26 @@ class PowerBin:
         npix_in = xy.shape[0]
         if callable(capacity_spec):
             if np.ndim(capacity_spec([0, 1], *args)) != 0:
-                raise ValueError("If 'capacity_spec' is a callable, it must return a single scalar number.")
+                raise ValueError(
+                    "If 'capacity_spec' is a callable, it must return a single scalar number."
+                )
         else:
             capacity_spec = np.asarray(capacity_spec, dtype=float)
             if capacity_spec.ndim != 1 or capacity_spec.shape[0] != npix_in:
-                raise ValueError(f"'capacity_spec' must have shape ({npix_in},), but got {capacity_spec.shape}")
+                raise ValueError(
+                    f"'capacity_spec' must have shape ({npix_in},), but got {capacity_spec.shape}"
+                )
             if not np.all(np.isfinite(capacity_spec)):
-                raise ValueError("If 'capacity_spec' is an array, it must contain only finite values.")
+                raise ValueError(
+                    "If 'capacity_spec' is an array, it must contain only finite values."
+                )
 
         if not isinstance(target_capacity, (int, float)) or target_capacity <= 0:
             raise ValueError("target_capacity must be a positive number.")
 
-        if pixelsize is not None and (not isinstance(pixelsize, (int, float)) or pixelsize <= 0):
+        if pixelsize is not None and (
+            not isinstance(pixelsize, (int, float)) or pixelsize <= 0
+        ):
             raise ValueError("pixelsize, if provided, must be a positive number.")
 
         if not isinstance(verbose, int) or verbose < 0:
@@ -188,21 +200,25 @@ class PowerBin:
 
         # Match exact console summary output of reference PowerBin
         if verbose >= 1:
-            print(f"Bins: {self.rbin.size}; Single Pixels: {np.sum(self.single)}/{len(xy)}")
+            print(
+                f"Bins: {self.rbin.size}; Single Pixels: {np.sum(self.single)}/{len(xy)}"
+            )
             print(f"Capacity Fractional RMS Scatter (%): {self.rms_frac:.2f}")
             print(f"Time Accretion: {self.time_accretion:.2f} s")
             if regul:
-                print(f"Time Regularization (it={self.it}): {self.time_regularization:.2f} s")
+                print(
+                    f"Time Regularization (it={self.it}): {self.time_regularization:.2f} s"
+                )
 
     def plot(
         self,
         capacity_scale: str = "raw",
-        ylabel: Optional[str] = None,
-        ylim: Optional[tuple[float, float]] = None,
+        ylabel: str | None = None,
+        ylim: tuple[float, float] | None = None,
         magrange: float = 10.0,
-        left_title: Optional[str] = None,
+        left_title: str | None = None,
         abscissa: str = "radius",
-        points_alpha: Optional[float] = None,
+        points_alpha: float | None = None,
         rasterize_points: bool = True,
         legend_loc: str = "best",
     ) -> None:
@@ -215,15 +231,21 @@ class PowerBin:
         if ylabel is not None and not isinstance(ylabel, str):
             raise TypeError("ylabel, if provided, must be a string.")
 
-        if ylim is not None:
-            if not isinstance(ylim, (list, tuple)) or len(ylim) != 2 or \
-               not all(isinstance(v, (int, float)) for v in ylim):
-                raise ValueError("ylim must be a tuple or list of two numbers, e.g., (bottom, top).")
+        if ylim is not None and (
+            not isinstance(ylim, (list, tuple))
+            or len(ylim) != 2
+            or not all(isinstance(v, (int, float)) for v in ylim)
+        ):
+            raise ValueError(
+                "ylim must be a tuple or list of two numbers, e.g., (bottom, top)."
+            )
 
         if not isinstance(magrange, (int, float)) or magrange <= 0:
             raise ValueError("magrange must be a positive number.")
 
-        if points_alpha is not None and (not isinstance(points_alpha, (int, float)) or not (0 <= points_alpha <= 1)):
+        if points_alpha is not None and (
+            not isinstance(points_alpha, (int, float)) or not (0 <= points_alpha <= 1)
+        ):
             raise ValueError("points_alpha must be a float between 0 and 1.")
 
         if not isinstance(rasterize_points, bool):
@@ -247,60 +269,90 @@ class PowerBin:
             bin_capacity = np.sqrt(bin_capacity)
             target_capacity = np.sqrt(target_capacity)
             non_single = bin_capacity[~single]
-            rms_frac = np.std(non_single, ddof=1) / np.mean(non_single) * 100 if len(non_single) > 1 else 0.0
+            rms_frac = (
+                np.std(non_single, ddof=1) / np.mean(non_single) * 100
+                if len(non_single) > 1
+                else 0.0
+            )
 
         if ylabel is None:
-            ylabel = "Capacity" if capacity_scale == "raw" else r"$\sqrt{\mathrm{Capacity}}$"
+            ylabel = (
+                "Capacity" if capacity_scale == "raw" else r"$\sqrt{\mathrm{Capacity}}$"
+            )
 
         rx, ry = np.ptp(xy, axis=0)
         rx = max(rx, 1e-4)
         ry = max(ry, 1e-4)
-        _, (ax0, ax1) = plt.subplots(1, 2, width_ratios=[3 / 4, ry / rx], layout="constrained")
+        _, (ax0, ax1) = plt.subplots(
+            1, 2, width_ratios=[3 / 4, ry / rx], layout="constrained"
+        )
         ax1.set_box_aspect(3 / 4)
 
         # Left panel: Power Diagram
         plt.sca(ax0)
-        plot_power_diagram(xy, pixel_capacity, self.bin_num, xybin, rbin, self.npix, magrange)
-        ax0.set_title(left_title if left_title is not None else "Centroidal Power Diagram")
-        ax0.set_xlabel('X (pixels)')
-        ax0.set_ylabel('Y (pixels)')
+        plot_power_diagram(
+            xy, pixel_capacity, self.bin_num, xybin, rbin, self.npix, magrange
+        )
+        ax0.set_title(
+            left_title if left_title is not None else "Centroidal Power Diagram"
+        )
+        ax0.set_xlabel("X (pixels)")
+        ax0.set_ylabel("Y (pixels)")
 
         # Right panel: Capacity vs. Radius
         plt.sca(ax1)
         if abscissa == "radius":
             x_pix = np.hypot(*xy.T)
             x_bin = np.hypot(*xybin.T)
-            xlabel = 'R (pixels)'
+            xlabel = "R (pixels)"
             x_left = -0.5
             x_right = np.max(x_pix)
         elif abscissa == "x":
             x_pix = xy[:, 0]
             x_bin = xybin[:, 0]
-            xlabel = 'X (pixels)'
+            xlabel = "X (pixels)"
             x_left, x_right = np.min(x_pix), np.max(x_pix)
         else:  # "y"
             x_pix = xy[:, 1]
             x_bin = xybin[:, 1]
-            xlabel = 'Y (pixels)'
+            xlabel = "Y (pixels)"
             x_left, x_right = np.min(x_pix), np.max(x_pix)
 
         if points_alpha is None:
             points_alpha = min(46.0 / (len(x_pix) ** 0.67), 1.0)
 
-        ax1.plot(x_pix, pixel_capacity, '.k', alpha=points_alpha, markeredgewidth=0,
-                 label='Input', rasterized=rasterize_points)
+        ax1.plot(
+            x_pix,
+            pixel_capacity,
+            ".k",
+            alpha=points_alpha,
+            markeredgewidth=0,
+            label="Input",
+            rasterized=rasterize_points,
+        )
         if np.sum(single) > 0:
-            ax1.plot(x_bin[single], bin_capacity[single], 'xb', markersize=3, label='Single')
-        ax1.plot(x_bin[~single], bin_capacity[~single], 'or', markersize=4.2, markeredgewidth=0, label='Bins')
-        ax1.plot(x_bin[~single], bin_capacity[~single], 'ok', markersize=1, markeredgewidth=0)
-        ax1.axhline(target_capacity, linestyle='--', linewidth=1, color='gray')
+            ax1.plot(
+                x_bin[single], bin_capacity[single], "xb", markersize=3, label="Single"
+            )
+        ax1.plot(
+            x_bin[~single],
+            bin_capacity[~single],
+            "or",
+            markersize=4.2,
+            markeredgewidth=0,
+            label="Bins",
+        )
+        ax1.plot(
+            x_bin[~single], bin_capacity[~single], "ok", markersize=1, markeredgewidth=0
+        )
+        ax1.axhline(target_capacity, linestyle="--", linewidth=1, color="gray")
         ax1.axis([x_left, x_right, np.min(pixel_capacity), np.max(bin_capacity) * 1.5])
 
         if ylim is not None:
             ax1.set_ylim(ylim)
 
-        ax1.set_title(rf'Fractional RMS Scatter $\sigma={rms_frac:.1f}$ %')
-        ax1.set_yscale('asinh')
+        ax1.set_title(rf"Fractional RMS Scatter $\sigma={rms_frac:.1f}$ %")
+        ax1.set_yscale("asinh")
         format_asinh_axis(ax1)
         ax1.set_xlabel(xlabel)
         ax1.set_ylabel(ylabel)

@@ -1,10 +1,7 @@
+use crate::{CapacitySpec, PowerBinConfig, power_diagram as rs_power_diagram, powerbin};
+use numpy::{IntoPyArray, PyArray1, PyArray2, PyArrayMethods, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
-use numpy::{IntoPyArray, PyArray1, PyArray2, PyArrayMethods, PyReadonlyArray1, PyReadonlyArray2};
-use crate::{
-    powerbin, power_diagram as rs_power_diagram,
-    CapacitySpec, PowerBinConfig,
-};
 
 /// Core Rust computational engine for PowerBin.
 #[pyclass(name = "PowerBinCore", subclass)]
@@ -81,13 +78,17 @@ impl PowerBinCore {
             let cap_func = |indices: &[usize]| -> f64 {
                 Python::attach(|py_inner| {
                     let py_indices = indices.to_vec();
-                    let mut call_args = vec![py_indices.into_pyobject(py_inner).unwrap().into_any()];
+                    let mut call_args =
+                        vec![py_indices.into_pyobject(py_inner).unwrap().into_any()];
                     for item in extra_args.iter() {
                         call_args.push(item);
                     }
                     let tuple_args = PyTuple::new(py_inner, call_args).unwrap();
-                    let res = capacity_spec.call1(tuple_args).expect("capacity callable failed");
-                    res.extract::<f64>().expect("capacity callable must return float")
+                    let res = capacity_spec
+                        .call1(tuple_args)
+                        .expect("capacity callable failed");
+                    res.extract::<f64>()
+                        .expect("capacity callable must return float")
                 })
             };
 
@@ -103,9 +104,16 @@ impl PowerBinCore {
         let py_xy = xy.to_owned_array().into_pyarray(py).unbind();
         let py_bin_num = PyArray1::from_vec(py, result.bin_num).unbind();
 
-        let py_xybin = PyArray2::from_vec2(py, &result.xybin.iter().map(|p| vec![p[0], p[1]]).collect::<Vec<_>>())
-            .unwrap()
-            .unbind();
+        let py_xybin = PyArray2::from_vec2(
+            py,
+            &result
+                .xybin
+                .iter()
+                .map(|p| vec![p[0], p[1]])
+                .collect::<Vec<_>>(),
+        )
+        .unwrap()
+        .unbind();
 
         let py_rbin = PyArray1::from_vec(py, result.rbin).unbind();
         let py_bin_cap = PyArray1::from_vec(py, result.bin_capacity).unbind();

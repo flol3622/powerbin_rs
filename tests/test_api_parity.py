@@ -2,30 +2,35 @@
 Test suite verifying 100% API and numerical parity between
 powerbin_rs and reference Python powerbin (https://pypi.org/project/powerbin/).
 """
-import inspect
-from pathlib import Path
-import numpy as np
-import pytest
-import matplotlib.pyplot as plt
 
+import inspect
+from importlib import resources
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
 import powerbin
 import powerbin_rs
+import pytest
 
 
 def load_ngc2273_data():
     """Loads reference NGC 2273 SAURON dataset."""
     data_path = Path(__file__).parent / "sample_data_ngc2273.txt"
     if not data_path.exists():
-        data_path = resources.files("powerbin") / "examples/sample_data_ngc2273.txt"
-    x, y, signal, noise = np.loadtxt(data_path).T
+        data_path = Path(
+            str(resources.files("powerbin") / "examples/sample_data_ngc2273.txt")
+        )
+    x, y, signal, noise = np.loadtxt(str(data_path)).T
     xy = np.column_stack([x, y])
     cap = (signal / noise) ** 2
-    return xy, cap, 50.0 ** 2
+    return xy, cap, 50.0**2
 
 
 # ============================================================================
 # 1. API Signature & Defaults Parity
 # ============================================================================
+
 
 def test_signature_and_defaults_parity():
     """Verify that powerbin_rs.PowerBin.__init__ has identical parameter names and defaults."""
@@ -38,12 +43,15 @@ def test_signature_and_defaults_parity():
         if param_name == "self":
             continue
         rs_param = rs_sig.parameters[param_name]
-        assert py_param.default == rs_param.default, f"Default mismatch for {param_name}"
+        assert py_param.default == rs_param.default, (
+            f"Default mismatch for {param_name}"
+        )
 
 
 # ============================================================================
 # 2. Input Validation Parity
 # ============================================================================
+
 
 def test_input_validation():
     """Verify that powerbin_rs raises identical exceptions for invalid inputs."""
@@ -93,8 +101,9 @@ def test_input_validation():
         powerbin_rs.PowerBin(valid_xy, valid_cap, target_capacity=50.0, verbose=-1)
 
     # 10. args not a tuple
+    bad_args: object = [1, 2]
     with pytest.raises(TypeError):
-        powerbin_rs.PowerBin(valid_xy, valid_cap, target_capacity=50.0, args=[1, 2])
+        powerbin_rs.PowerBin(valid_xy, valid_cap, target_capacity=50.0, args=bad_args)
 
     # 11. maxiter non-positive
     with pytest.raises(ValueError):
@@ -104,6 +113,7 @@ def test_input_validation():
 # ============================================================================
 # 3. Numerical & Structural Parity on Astronomical IFS Data (NGC 2273)
 # ============================================================================
+
 
 def test_ngc2273_additive_parity():
     """Verify exact numerical and attribute match with reference on SAURON NGC 2273 data."""
@@ -125,9 +135,23 @@ def test_ngc2273_additive_parity():
 
     # 3. Attributes inspection
     expected_attrs = [
-        "xy", "capacity", "target_capacity", "pixelsize", "verbose", "args",
-        "single", "bin_num", "xybin", "rbin", "bin_capacity", "pixel_capacity",
-        "npix", "rms_frac", "time_accretion", "time_regularization", "it"
+        "xy",
+        "capacity",
+        "target_capacity",
+        "pixelsize",
+        "verbose",
+        "args",
+        "single",
+        "bin_num",
+        "xybin",
+        "rbin",
+        "bin_capacity",
+        "pixel_capacity",
+        "npix",
+        "rms_frac",
+        "time_accretion",
+        "time_regularization",
+        "it",
     ]
     for attr in expected_attrs:
         assert hasattr(pb_rs, attr), f"Missing attribute: {attr}"
@@ -148,8 +172,12 @@ def test_ngc2273_accretion_only_parity():
     """Verify regul=False produces identical initial accretion results."""
     xy, cap, target_cap = load_ngc2273_data()
 
-    pb_ref = powerbin.PowerBin(xy, cap, target_capacity=target_cap, regul=False, verbose=0)
-    pb_rs = powerbin_rs.PowerBin(xy, cap, target_capacity=target_cap, regul=False, verbose=0)
+    pb_ref = powerbin.PowerBin(
+        xy, cap, target_capacity=target_cap, regul=False, verbose=0
+    )
+    pb_rs = powerbin_rs.PowerBin(
+        xy, cap, target_capacity=target_cap, regul=False, verbose=0
+    )
 
     assert len(pb_rs.rbin) == len(pb_ref.rbin) == 378
     assert pb_rs.it == 0
@@ -163,8 +191,12 @@ def test_callable_capacity_parity():
     def custom_func(idx, multiplier):
         return float(np.sum(cap[idx]) * multiplier)
 
-    pb_ref = powerbin.PowerBin(xy, custom_func, target_capacity=target_cap * 2.0, args=(2.0,), verbose=0)
-    pb_rs = powerbin_rs.PowerBin(xy, custom_func, target_capacity=target_cap * 2.0, args=(2.0,), verbose=0)
+    pb_ref = powerbin.PowerBin(
+        xy, custom_func, target_capacity=target_cap * 2.0, args=(2.0,), verbose=0
+    )
+    pb_rs = powerbin_rs.PowerBin(
+        xy, custom_func, target_capacity=target_cap * 2.0, args=(2.0,), verbose=0
+    )
 
     assert len(pb_rs.rbin) == len(pb_ref.rbin) == 378
     assert np.isclose(pb_rs.rms_frac, pb_ref.rms_frac, atol=0.1)
@@ -174,13 +206,16 @@ def test_callable_capacity_parity():
 # 4. Helper Functions & Plotting
 # ============================================================================
 
+
 def test_power_diagram_parity():
     """Verify power_diagram helper function parity."""
+    from powerbin.powerbin import power_diagram as py_power_diagram
+
     xy = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
     xybin = np.array([[0.0, 0.0], [1.0, 1.0]])
     rbin = np.array([1.0, 1.0])
 
-    bins_ref = powerbin.powerbin.power_diagram(xy, xybin, rbin)
+    bins_ref = py_power_diagram(xy, xybin, rbin)
     bins_rs = powerbin_rs.power_diagram(xy, xybin, rbin)
 
     np.testing.assert_array_equal(bins_rs, bins_ref)
@@ -198,3 +233,96 @@ def test_plot_method():
     # Test sqrt scale
     pb.plot(capacity_scale="sqrt", magrange=5.0)
     plt.close("all")
+
+
+def test_update_bins_additive_and_callable():
+    """Verify update_bins helper function for additive and callable cases."""
+    xy = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]], dtype=float)
+    xybin = np.array([[0.0, 0.0], [1.0, 1.0]], dtype=float)
+    rbin = np.array([1.0, 1.0], dtype=float)
+    cap = np.array([10.0, 20.0, 30.0, 40.0], dtype=float)
+
+    # Additive
+    xybin_new, npix, bin_cap, _bin_num = powerbin_rs.update_bins(cap, xy, xybin, rbin)
+    assert len(xybin_new) == 2
+    assert len(npix) == 2
+    assert np.sum(npix) == len(xy)
+    assert np.sum(bin_cap) == np.sum(cap)
+    assert len(_bin_num) == len(xy)
+
+    # Callable with args
+    def custom_cap(indices, scale):
+        return float(np.sum(cap[indices]) * scale)
+
+    _xybin_new2, _npix2, bin_cap2, _bin_num2 = powerbin_rs.update_bins(
+        custom_cap, xy, xybin, rbin, args=(1.5,)
+    )
+    assert np.allclose(bin_cap2, bin_cap * 1.5)
+
+
+def test_plot_permutations():
+    """Verify all options and permutations of .plot()."""
+    xy, cap, target_cap = load_ngc2273_data()
+    pb = powerbin_rs.PowerBin(xy, cap, target_capacity=target_cap, verbose=0)
+
+    # Abscissa options
+    pb.plot(abscissa="x")
+    plt.close("all")
+    pb.plot(abscissa="y")
+    plt.close("all")
+
+    # Custom styling
+    pb.plot(
+        ylabel="Custom S/N",
+        ylim=(5.0, 150.0),
+        magrange=8.0,
+        left_title="Galaxy NGC 2273",
+        points_alpha=0.3,
+        rasterize_points=False,
+        legend_loc="upper right",
+    )
+    plt.close("all")
+
+
+def test_large_target_capacity_single_bin():
+    """Verify behavior when target capacity equals total flux, creating a single bin."""
+    xy = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]], dtype=float)
+    cap = np.array([1.0, 2.0, 3.0, 4.0], dtype=float)
+    pb = powerbin_rs.PowerBin(xy, cap, target_capacity=10.0, verbose=0)
+    assert len(pb.rbin) == 1
+    assert pb.npix[0] == 4
+    assert np.isclose(pb.bin_capacity[0], 10.0)
+
+
+def test_maxiter_control():
+    """Verify maxiter limits iterations correctly."""
+    xy, cap, target_cap = load_ngc2273_data()
+    pb1 = powerbin_rs.PowerBin(
+        xy, cap, target_capacity=target_cap, maxiter=2, verbose=0
+    )
+    assert pb1.it <= 2
+
+    pb10 = powerbin_rs.PowerBin(
+        xy, cap, target_capacity=target_cap, maxiter=10, verbose=0
+    )
+    assert pb10.it <= 10
+
+
+def test_explicit_pixelsize():
+    """Verify explicit pixelsize parameter is respected."""
+    xy, cap, target_cap = load_ngc2273_data()
+    pb = powerbin_rs.PowerBin(
+        xy, cap, target_capacity=target_cap, pixelsize=1.5, verbose=0
+    )
+    assert pb.pixelsize == 1.5
+
+
+def test_drop_in_module_alias():
+    """Verify that importing powerbin alias exposes identical interface."""
+    from powerbin import PowerBin as AliasPowerBin
+
+    xy = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]], dtype=float)
+    cap = np.array([2.0, 2.0, 2.0, 2.0], dtype=float)
+    pb = AliasPowerBin(xy, cap, target_capacity=4.0, verbose=0)
+    assert len(pb.rbin) == 2
+    assert callable(AliasPowerBin)

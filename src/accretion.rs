@@ -1,5 +1,5 @@
 use crate::geometry::build_delaunay_adjacency;
-use delaunator::{triangulate, Point};
+use delaunator::{Point, triangulate};
 use kiddo::{ImmutableKdTree, SquaredEuclidean};
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
@@ -27,10 +27,7 @@ impl PartialOrd for HeapEntry {
     }
 }
 
-pub fn reassign_bad_bins(
-    xy: &[[f64; 2]],
-    bin_num: &mut [usize],
-) -> Vec<[f64; 2]> {
+pub fn reassign_bad_bins(xy: &[[f64; 2]], bin_num: &mut [usize]) -> Vec<[f64; 2]> {
     let n = xy.len();
     let mut good_bins: Vec<usize> = bin_num.iter().copied().filter(|&b| b > 0).collect();
     good_bins.sort_unstable();
@@ -62,12 +59,16 @@ pub fn reassign_bad_bins(
 
     let mut good_centroids = Vec::with_capacity(num_good);
     for idx in 0..num_good {
-        good_centroids.push([sum_x[idx] / count[idx] as f64, sum_y[idx] / count[idx] as f64]);
+        good_centroids.push([
+            sum_x[idx] / count[idx] as f64,
+            sum_y[idx] / count[idx] as f64,
+        ]);
     }
 
     let bad_indices: Vec<usize> = (0..n).filter(|&i| bin_num[i] == 0).collect();
     if !bad_indices.is_empty() {
-        let tree: ImmutableKdTree<f64, 2> = ImmutableKdTree::new_from_slice(&good_centroids).unwrap();
+        let tree: ImmutableKdTree<f64, 2> =
+            ImmutableKdTree::new_from_slice(&good_centroids).unwrap();
         for &bad_idx in &bad_indices {
             let p = xy[bad_idx];
             let best_idx = tree
@@ -91,18 +92,23 @@ pub fn reassign_bad_bins(
         }
 
         for idx in 0..num_good {
-            good_centroids[idx] = [sum_x[idx] / count[idx] as f64, sum_y[idx] / count[idx] as f64];
+            good_centroids[idx] = [
+                sum_x[idx] / count[idx] as f64,
+                sum_y[idx] / count[idx] as f64,
+            ];
         }
     }
 
     good_centroids
 }
 
+use crate::CapacityFn;
+
 pub fn bin_accretion_impl(
     xy: &[[f64; 2]],
     dens: &[f64],
     target_capacity: f64,
-    custom_capacity_fn: Option<&dyn Fn(&[usize]) -> f64>,
+    custom_capacity_fn: Option<CapacityFn>,
     verbose: usize,
 ) -> (Vec<[f64; 2]>, Vec<f64>, Vec<usize>) {
     let n = xy.len();
@@ -118,7 +124,10 @@ pub fn bin_accretion_impl(
     let (indptr, indices) = build_delaunay_adjacency(n, &tri.triangles);
 
     let mut heap: BinaryHeap<HeapEntry> = (0..n)
-        .map(|i| HeapEntry { dens: dens[i], index: i })
+        .map(|i| HeapEntry {
+            dens: dens[i],
+            index: i,
+        })
         .collect();
 
     let q = 0.2;
@@ -189,7 +198,8 @@ pub fn bin_accretion_impl(
                 centroid[0] + delta[0] / cand_pixel_count as f64,
                 centroid[1] + delta[1] / cand_pixel_count as f64,
             ];
-            let cand_r2_sum = r2_sum + delta[0] * (xy[new_pix][0] - cand_centroid[0])
+            let cand_r2_sum = r2_sum
+                + delta[0] * (xy[new_pix][0] - cand_centroid[0])
                 + delta[1] * (xy[new_pix][1] - cand_centroid[1]);
 
             if cand_r2_sum > fac * (cand_pixel_count as f64 * cand_pixel_count as f64) {

@@ -1,4 +1,4 @@
-use delaunator::{triangulate, Point};
+use delaunator::{Point, triangulate};
 
 /// Builds CSR representation of Delaunay triangulation adjacency graph
 /// with an ultra-fast O(N) bucket-based insertion and local deduplication.
@@ -109,7 +109,10 @@ pub fn estimate_pixelsize(xy: &[[f64; 2]]) -> f64 {
         min_dists[mid]
     } else {
         let val1 = min_dists[mid];
-        let val0 = *min_dists[..mid].iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+        let val0 = *min_dists[..mid]
+            .iter()
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap();
         0.5 * (val0 + val1)
     }
 }
