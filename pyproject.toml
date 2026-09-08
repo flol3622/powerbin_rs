@@ -36,6 +36,7 @@ test = [
 [tool.maturin]
 python-source = "python"
 module-name = "powerbin_rs._core"
+python-packages = ["powerbin_rs", "powerbin"]
 features = ["python"]
 
 [dependency-groups]
