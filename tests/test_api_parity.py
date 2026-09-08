@@ -3,7 +3,7 @@ Test suite verifying 100% API and numerical parity between
 powerbin_rs and reference Python powerbin (https://pypi.org/project/powerbin/).
 """
 import inspect
-from importlib import resources
+from pathlib import Path
 import numpy as np
 import pytest
 import matplotlib.pyplot as plt
@@ -14,7 +14,9 @@ import powerbin_rs
 
 def load_ngc2273_data():
     """Loads reference NGC 2273 SAURON dataset."""
-    data_path = resources.files("powerbin") / "examples/sample_data_ngc2273.txt"
+    data_path = Path(__file__).parent / "sample_data_ngc2273.txt"
+    if not data_path.exists():
+        data_path = resources.files("powerbin") / "examples/sample_data_ngc2273.txt"
     x, y, signal, noise = np.loadtxt(data_path).T
     xy = np.column_stack([x, y])
     cap = (signal / noise) ** 2

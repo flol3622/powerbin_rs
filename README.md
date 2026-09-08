@@ -56,8 +56,6 @@ Simulated galaxies with exponential Sérsic $n=1$ profiles, axial ratio $q = 3/4
 
 *\*Note: 180s on 1.2M pixels is the reference time documented in Cappellari (2025, Section 6).*
 
-![Scaling Benchmark](benchmark_scaling.png)
-
 ---
 
 ## 📦 Installation

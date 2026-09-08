@@ -1,16 +1,12 @@
 use powerbin_rs::{estimate_pixelsize, powerbin, CapacitySpec, PowerBinConfig};
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+
+const SAMPLE_DATA: &str = include_str!("sample_data_ngc2273.txt");
 
 fn load_ngc2273() -> (Vec<[f64; 2]>, Vec<f64>) {
-    let file = File::open(".venv/lib/python3.14/site-packages/powerbin/examples/sample_data_ngc2273.txt")
-        .expect("Failed to open sample_data_ngc2273.txt");
-    let reader = BufReader::new(file);
     let mut xy = Vec::new();
     let mut dens = Vec::new();
 
-    for line in reader.lines() {
-        let line = line.expect("line");
+    for line in SAMPLE_DATA.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;

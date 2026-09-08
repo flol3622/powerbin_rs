@@ -1,20 +1,15 @@
 use powerbin_rs::{estimate_pixelsize, powerbin, CapacitySpec, PowerBinConfig};
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 use std::time::Instant;
+
+const SAMPLE_DATA: &str = include_str!("../tests/sample_data_ngc2273.txt");
 
 fn main() {
     println!("PowerBin (Rust) — Example on NGC 2273 SAURON data\n");
 
-    let file_path = ".venv/lib/python3.14/site-packages/powerbin/examples/sample_data_ngc2273.txt";
-    let file = File::open(file_path).expect("Could not open sample_data_ngc2273.txt");
-    let reader = BufReader::new(file);
-
     let mut xy = Vec::new();
     let mut dens = Vec::new();
 
-    for line in reader.lines() {
-        let line = line.expect("Failed to read line");
+    for line in SAMPLE_DATA.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
