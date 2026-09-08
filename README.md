@@ -11,6 +11,8 @@ Based on the paper:
 > *Michele Cappellari (2025, MNRAS, 544, 1432)*  
 > [arXiv:2509.06903](https://arxiv.org/abs/2509.06903) | [PyPI: powerbin](https://pypi.org/project/powerbin/)
 
+Detailed research report, GPU scaling analysis, and algorithmic complexity tradeoffs are documented in [**RESEARCH.md**](RESEARCH.md).
+
 ---
 
 ## 🚀 Key Highlights & Optimizations
@@ -60,14 +62,23 @@ Simulated galaxies with exponential Sérsic $n=1$ profiles, axial ratio $q = 3/4
 
 ## 📦 Installation
 
-### From Python (pip / maturin)
+`powerbin_rs` is built with Rust and PyO3, packaged with Maturin, and can be installed via [`uv`](https://github.com/astral-sh/uv) or `pip` on any operating system (Linux, macOS, Windows; x86_64, aarch64) without proprietary GPU dependencies.
+
+### With `uv` (Recommended)
 ```bash
-# In your virtualenv
-pip install maturin
-maturin develop --release
+# Standard install from repository root
+uv pip install .
+
+# Or editable install for local development
+uv pip install -e .
 ```
 
-### In Rust (`Cargo.toml`)
+### With `pip`
+```bash
+pip install .
+```
+
+### In Pure Rust (`Cargo.toml`)
 ```toml
 [dependencies]
 powerbin_rs = { path = "." }

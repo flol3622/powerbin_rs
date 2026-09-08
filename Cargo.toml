@@ -22,4 +22,3 @@ python = ["dep:pyo3", "dep:numpy"]
 opt-level = 3
 lto = "fat"
 codegen-units = 1
-panic = "abort"

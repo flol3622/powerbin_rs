@@ -1,13 +1,14 @@
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyTuple};
+use pyo3::types::PyTuple;
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyArrayMethods, PyReadonlyArray1, PyReadonlyArray2};
 use crate::{
     powerbin, power_diagram as rs_power_diagram,
     CapacitySpec, PowerBinConfig,
 };
 
-#[pyclass]
-pub struct PowerBin {
+/// Core Rust computational engine for PowerBin.
+#[pyclass(name = "PowerBinCore", subclass)]
+pub struct PowerBinCore {
     #[pyo3(get)]
     pub xy: Py<PyArray2<f64>>,
     #[pyo3(get)]
@@ -43,7 +44,7 @@ pub struct PowerBin {
 }
 
 #[pymethods]
-impl PowerBin {
+impl PowerBinCore {
     #[new]
     #[pyo3(signature = (xy, capacity_spec, target_capacity, pixelsize=None, verbose=1, regul=true, args=None, maxiter=50))]
     pub fn new(
@@ -99,7 +100,6 @@ impl PowerBin {
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?
         };
 
-        // Convert outputs to Python numpy arrays
         let py_xy = xy.to_owned_array().into_pyarray(py).unbind();
         let py_bin_num = PyArray1::from_vec(py, result.bin_num).unbind();
 
@@ -113,7 +113,7 @@ impl PowerBin {
         let py_npix = PyArray1::from_vec(py, result.npix).unbind();
         let py_single = PyArray1::from_vec(py, result.single).unbind();
 
-        Ok(PowerBin {
+        Ok(PowerBinCore {
             xy: py_xy,
             bin_num: py_bin_num,
             xybin: py_xybin,
@@ -131,54 +131,6 @@ impl PowerBin {
             time_regularization: result.time_regularization_sec,
             time_total: result.time_total_sec,
         })
-    }
-
-    #[pyo3(signature = (capacity_scale="raw", ylabel=None, ylim=None, magrange=10.0, left_title=None, abscissa="radius", points_alpha=None, rasterize_points=true, legend_loc="best"))]
-    pub fn plot<'py>(
-        &self,
-        py: Python<'py>,
-        capacity_scale: &str,
-        ylabel: Option<&str>,
-        ylim: Option<(f64, f64)>,
-        magrange: f64,
-        left_title: Option<&str>,
-        abscissa: &str,
-        points_alpha: Option<f64>,
-        rasterize_points: bool,
-        legend_loc: &str,
-    ) -> PyResult<()> {
-        let kwargs = PyDict::new(py);
-        kwargs.set_item("capacity_scale", capacity_scale)?;
-        if let Some(yl) = ylabel {
-            kwargs.set_item("ylabel", yl)?;
-        }
-        if let Some((y0, y1)) = ylim {
-            kwargs.set_item("ylim", (y0, y1))?;
-        }
-        kwargs.set_item("magrange", magrange)?;
-        if let Some(lt) = left_title {
-            kwargs.set_item("left_title", lt)?;
-        }
-        kwargs.set_item("abscissa", abscissa)?;
-        if let Some(pa) = points_alpha {
-            kwargs.set_item("points_alpha", pa)?;
-        }
-        kwargs.set_item("rasterize_points", rasterize_points)?;
-        kwargs.set_item("legend_loc", legend_loc)?;
-
-        let py_pow = py.import("powerbin")?.getattr("PowerBin")?;
-        let dummy = py_pow.call((self.xy.bind(py), self.pixel_capacity.bind(py), self.target_capacity), Some(&kwargs));
-        if let Ok(inst) = dummy {
-            inst.setattr("bin_num", self.bin_num.bind(py))?;
-            inst.setattr("xybin", self.xybin.bind(py))?;
-            inst.setattr("rbin", self.rbin.bind(py))?;
-            inst.setattr("bin_capacity", self.bin_capacity.bind(py))?;
-            inst.setattr("npix", self.npix.bind(py))?;
-            inst.setattr("single", self.single.bind(py))?;
-            inst.setattr("rms_frac", self.rms_frac)?;
-            inst.call_method("plot", (), Some(&kwargs))?;
-        }
-        Ok(())
     }
 }
 
@@ -209,8 +161,8 @@ pub fn power_diagram<'py>(
 }
 
 #[pymodule]
-fn powerbin_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PowerBin>()?;
+fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<PowerBinCore>()?;
     m.add_function(wrap_pyfunction!(power_diagram, m)?)?;
     Ok(())
 }

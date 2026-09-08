@@ -1,1 +1,10 @@
 /target
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.venv/
+uv.lock
+*.so
+*.pyd
+*.dylib
