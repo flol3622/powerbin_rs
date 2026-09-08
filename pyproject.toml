@@ -21,8 +21,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/<future_repo>"
-Repository = "https://github.com/<future_repo>"
+Homepage = "https://github.com/flol3622/powerbin_rs"
+Repository = "https://github.com/flol3622/powerbin_rs"
 
 [project.optional-dependencies]
 plot = [
